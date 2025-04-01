@@ -1,14 +1,13 @@
+from dotenv import load_dotenv
+import os
 from pprint import pprint
 import requests
 
 # put in environment var in future
 SPOTIFY_ACCESS_TOKEN = ''
 SPOTIFY_GET_CURRENT_TRACK_URL = 'https://api.spotify.com/v1/me/player/currently-playing'
-client_id = 'e9d84e6801064176925e1b25a6ff45a7'
-client_secret = 'c3ec526255ae4643b44703340d7c4f9c'
 redirect_uri = 'http://localhost:8888/callback'
 scope = 'user-read-playback-state user-modify-playback-state'
-
 
 def get_current_track_info(access_token):
     response = requests.get(
@@ -36,12 +35,18 @@ def get_current_track_info(access_token):
     return current_track_info
 
 def main():
-    current_track_info = get_current_track_info(
-        SPOTIFY_ACCESS_TOKEN
-    )
+    load_dotenv()
+    client_id = os.getenv('CLIENT_ID')
+    client_secret = os.getenv('CLIENT_SECRET')
 
-    # nicer way to print dictionaries
-    pprint(current_track_info, indent=4)
+    print(client_id, client_secret)
+
+    # current_track_info = get_current_track_info(
+    #     SPOTIFY_ACCESS_TOKEN
+    # )
+
+    # # nicer way to print dictionaries
+    # pprint(current_track_info, indent=4)
 
     # {
     #     "id": "123456",
