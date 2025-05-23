@@ -2,7 +2,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7789.h>
 #include <AnimatedGIF.h>
-#include "piko_idle.h"  // Replace with your actual .h file
+#include "piko_idle_v0.h"  // Replace with your actual .h file
 
 // Define your TFT control pins
 #define TFT_CS     5
