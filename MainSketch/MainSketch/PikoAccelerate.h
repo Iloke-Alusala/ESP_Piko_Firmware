@@ -7,7 +7,7 @@
 // #include <Wire.h> //used to facilitate I2C communication
 
 //Preprocessor DEFINES
-#define EXERCISING_THRESHOLD 1000
+#define EXERCISING_THRESHOLD 500
 #define WALKING_THRESHOLD 1500
 #define RUNNING_THRESHOLD 5000
 #define SPRINTING_THRESHOLD 8000
@@ -16,6 +16,7 @@
 #define I2C_ACCE_ADDRESS 0x18
 
 enum MotionState {
+  NONE = -1,
   idling,
   walking,
   running,
@@ -23,7 +24,7 @@ enum MotionState {
 };
 
 float getMagnitude(int32_t x, int32_t y, int32_t z);
-void determineMovementType(float ave, float std);
+MotionState determineMovementType(float ave, float std);
 void countSteps(float a, MotionState movementType);
 void takeStep(float a, int threshold);
 

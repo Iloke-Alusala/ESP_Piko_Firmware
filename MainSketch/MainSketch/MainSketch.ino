@@ -16,7 +16,7 @@
 
 //Function declarations:
 void GIFDraw(GIFDRAW *pDraw);
-
+void accelerationJob(void);
 
 //Object initilisations
 DFRobot_LIS331HH_I2C acce(&Wire, I2C_ACCE_ADDRESS); //creates an accelerometer object that communicates via I2C
@@ -27,6 +27,23 @@ AnimatedGIF gif;
 
 //Global vars
 char* overlayText = "0";
+
+unsigned long lastSampleTime = 0;
+unsigned long sampleRate = 20;
+MotionState previousState = NONE;
+
+unsigned long lastFrameTime = 0;
+int frameDelay = 0;
+int FPS = 9;
+
+bool gifPlaying = false;
+
+// Data arrays (replace with your actual GIF data headers)
+// THESE MUST BE IN THIS ORDER 
+//const uint8_t* gifData[] = { piko_idle, piko_walk, piko_run, piko_sprint};
+const uint8_t* gifData[] = { piko_idle};
+//size_t gifSize[] = { sizeof(piko_idle), sizeof(piko_walk), sizeof(piko_run),sizeof(piko_sprint)};
+size_t gifSize[] = { sizeof(piko_idle)};
 
 void setup() {
   //Serial set
@@ -65,6 +82,48 @@ void setup() {
 
 void loop() {
 
+  unsigned long now = millis();
+
+  // 1. Update state every 20ms
+  if (now - lastSampleTime >= sampleRate) {
+    lastSampleTime = now;
+    accelerationJob();
+  }
+
+  // If state changed, open new GIF
+  if (motionType != previousState) {
+    gif.close(); // Close previous GIF
+    if (gif.open((uint8_t*)gifData[motionType], gifSize[motionType], GIFDraw)) {
+      gifPlaying = true;
+      lastFrameTime = now;
+      frameDelay = 0;
+      previousState = motionType;
+    } else {
+      Serial.println("Failed to open GIF");
+      gifPlaying = false;
+    }
+  }
+
+  // 3. Non-blocking GIF frame playback
+  if (gifPlaying && now - lastFrameTime >= 1/FPS) {
+    int result = gif.playFrame(false, &frameDelay);
+    lastFrameTime = now;
+
+    if (result == 0) {
+      gif.reset();  // Or gifPlaying = false if you don't want to loop
+    }
+  }
+}
+
+
+
+/********************************************************************************************************************/
+/************************************************Function Definitions************************************************/
+/********************************************************************************************************************/
+
+
+void accelerationJob(void){
+  unsigned long nowa = millis();
   //Acceleration Logic
   ax = acce.readAccX();
   ay = acce.readAccY();
@@ -79,33 +138,11 @@ void loop() {
   a_ave = myAccelerationStats.mean();
   a_std = myAccelerationStats.sigma();
   
-  determineMovementType(a_ave, a_std);
-
-  //#########IMPORTANT##########
-  // Replace the name "pixel_swamp_240_320" with the name that your data array in the .h file"
-  //############################
-  if (gif.open((uint8_t *)piko_idle, sizeof(piko_idle), GIFDraw)) {
-    Serial.printf("GIF opened: %d x %d\n", gif.getCanvasWidth(), gif.getCanvasHeight());
-
-    while (gif.playFrame(true, NULL)) {
-      yield();  // Keep WiFi/OS tasks alive on ESP32
-      getacceleration();
-    }
-
-    gif.close();
-  } else {
-    Serial.println("Failed to open GIF");
-  }
+  motionType = determineMovementType(a_ave, a_std);
+  countSteps(afiltered, motionType);
+  Serial.println("Acceleration job took:");
+  Serial.println(nowa);
 }
-
-
-
-/********************************************************************************************************************/
-/************************************************Function Definitions************************************************/
-/********************************************************************************************************************/
-
-
-
 
 
 void GIFDraw(GIFDRAW *pDraw) {

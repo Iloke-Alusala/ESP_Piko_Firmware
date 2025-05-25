@@ -14,7 +14,7 @@ SemaphoreHandle_t motionTypeMutex;
 
 // Task handles (optional, for debugging or control)
 TaskHandle_t accelTaskHandle;
-//TaskHandle_t displayTaskHandle;
+TaskHandle_t testTaskHandle;
 
 //Objects
 DFRobot_LIS331HH_I2C acce(&Wire, I2C_ACCE_ADDRESS); //creates an accelerometer object that communicates via I2C
@@ -40,40 +40,57 @@ void accelTask(void *pvParameters) {
 
     MotionState newState = determineMovementType(a_ave, a_std);
     countSteps(afiltered, newState);
-    Serial.print("steps: "); Serial.println(steps);
+    //Serial.print("steps: "); Serial.println(steps);
 
     // Protect motionState with mutex
     if (xSemaphoreTake(motionTypeMutex, portMAX_DELAY)) {
       motionType = newState;
       xSemaphoreGive(motionTypeMutex);
-      Serial.println("I changed the motionType");
+      //Serial.println("I changed the motionType");
     }
     if(xSemaphoreTake(totalstepsMutex, portMAX_DELAY)){
       totalsteps = totalsteps+steps;
-      Serial.println("I changed the total steps");
+      //Serial.println("I changed the total steps");
       xSemaphoreGive(totalstepsMutex);
     }
-    Serial.println("Task Executed!");
+    //Serial.println("Task Executed!");
     vTaskDelay(20 / portTICK_PERIOD_MS);  // Sample rate: 20ms
   }
 }
 
-// Task running on Core 1: Display motionState on LCD
-// void displayTask(void *pvParameters) {
-//   while (true) {
-//     String stateCopy;
+void testingTask(void *pvParameters){
+  MotionState state2display;
+  int steps2display;
+  while(true){
+    if(xSemaphoreTake(motionTypeMutex, portMAX_DELAY)){
+      state2display = motionType;
+      xSemaphoreGive(motionTypeMutex);
+    }
 
-//     // Safely read shared state
-//     if (xSemaphoreTake(motionStateMutex, portMAX_DELAY)) {
-//       stateCopy = motionState;
-//       xSemaphoreGive(motionStateMutex);
-//     }
+    switch (state2display){
+      case idling:
+        Serial.println("I am idling");
+        break;
+      case walking:
+        Serial.println("I am walking");
+        break;
+      case running:
+        Serial.println("I am running");
+        break;
+      case sprinting:
+        Serial.println("I am sprinting");
+        break;
+    }
 
-//     updateLCD("State: " + stateCopy);  // Your display function
+    if(xSemaphoreTake(totalstepsMutex, portMAX_DELAY)){
+      steps2display = totalsteps;
+      xSemaphoreGive(totalstepsMutex);
+    }
 
-//     vTaskDelay(500 / portTICK_PERIOD_MS);  // Update display every 500ms
-//   }
-// }
+    Serial.println(steps2display);
+    vTaskDelay(1000/portTICK_PERIOD_MS);
+  }
+}
 
 void setup() {
   //Serial set
@@ -97,30 +114,31 @@ void setup() {
   totalstepsMutex  =xSemaphoreCreateMutex();
   motionTypeMutex = xSemaphoreCreateMutex();
 
+  if (totalstepsMutex == NULL || motionTypeMutex == NULL) {
+  Serial.println("Failed to create mutexes!");
+  while (1); // halt
+  }
+
   // Create tasks pinned to specific cores
   xTaskCreatePinnedToCore(
     accelTask,           // Task function
     "AccelTask",         // Name
-    2048,                // Stack size
+    4096,                // Stack size
     NULL,                // Parameter
-    1,                   // Priority
+    0,                   // Priority
     &accelTaskHandle,    // Handle
     0                    // Core 0
   );
 
-  // xTaskCreatePinnedToCore(
-  //   displayTask,
-  //   "DisplayTask",
-  //   2048,
-  //   NULL,
-  //   1,
-  //   &displayTaskHandle,
-  //   1                    // Core 1
-  // );
+  xTaskCreatePinnedToCore(
+    testingTask,
+    "TESTTASK",
+    1024,
+    NULL,
+    1,
+    &testTaskHandle,
+    1                    // Core 1
+  );
 }
 
-void loop(){
-
-
-
-}
+void loop(){}

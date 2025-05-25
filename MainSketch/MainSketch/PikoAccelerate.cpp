@@ -10,25 +10,21 @@ float getMagnitude(int32_t x, int32_t y, int32_t z){
   return sqrt((float)x*x + (float)y*y + (float)z*z);
 }
 
-void determineMovementType(float ave, float std){
+MotionState determineMovementType(float ave, float std){
 
   if(std>EXERCISING_THRESHOLD){
     if(ave>SPRINTING_THRESHOLD){
-      motionType = sprinting;
-      return;
+      return sprinting;
     }
     else if(ave>RUNNING_THRESHOLD){
-      motionType = running;
-      return;
+      return running;
     }
     else if(ave>WALKING_THRESHOLD){
-      motionType = walking;
-      return;
+      return walking;
     }
     else{}
   }
-  motionType = idling;
-  return;
+  return idling;
 }
 
 void countSteps(float a, MotionState movementType){
