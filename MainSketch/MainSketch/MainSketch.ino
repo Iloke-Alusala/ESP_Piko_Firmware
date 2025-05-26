@@ -7,12 +7,17 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7789.h>
 #include <AnimatedGIF.h>
+#include "piko_sleep.h"
 #include "piko_idle.h"  // Replace with your actual .h file
+#include "piko_walk.h"
+#include "piko_jog.h"
+#include "piko_sprint.h"
 
 // Define your MACROS
 #define TFT_CS     5
 #define TFT_RST    6
 #define TFT_DC     7
+#define SLEEP_THRESHOLD 30000
 
 //Function declarations:
 void GIFDraw(GIFDRAW *pDraw);
@@ -36,14 +41,17 @@ unsigned long lastFrameTime = 0;
 int frameDelay = 0;
 int FPS = 9;
 
-bool gifPlaying = false;
+unsigned long sleeptimeCounter = 0;
+unsigned long lastsleepcheckTime = 0;
+bool sleepy = false;
 
+bool gifPlaying = false;
+int indexGif;
 // Data arrays (replace with your actual GIF data headers)
 // THESE MUST BE IN THIS ORDER 
-//const uint8_t* gifData[] = { piko_idle, piko_walk, piko_run, piko_sprint};
-const uint8_t* gifData[] = { piko_idle};
-//size_t gifSize[] = { sizeof(piko_idle), sizeof(piko_walk), sizeof(piko_run),sizeof(piko_sprint)};
-size_t gifSize[] = { sizeof(piko_idle)};
+const uint8_t* gifData[] = { idle_v2, walk_v2, jog_v2, sprint_v2, sleep_v2};
+size_t gifSize[] = { sizeof(idle_v2), sizeof(walk_v2), sizeof(jog_v2),sizeof(sprint_v2), sizeof(sleep_v2)};
+//size_t gifSize[] = { sizeof(piko_idle)};
 
 void setup() {
   //Serial set
@@ -85,15 +93,28 @@ void loop() {
   unsigned long now = millis();
 
   // 1. Update state every 20ms
+  //Serial.println(now);
   if (now - lastSampleTime >= sampleRate) {
     lastSampleTime = now;
     accelerationJob();
+    //Serial.println("I entered the acceleration job");
   }
-
+  //Serial.println(millis());
+  if(motionType == idling && motionType == previousState){
+    sleeptimeCounter = sleeptimeCounter+now-lastsleepcheckTime;
+    sleepy = sleeptimeCounter>=SLEEP_THRESHOLD;
+    lastsleepcheckTime = now;
+  }
+  else{
+    sleeptimeCounter=0;
+    sleepy=false;
+  }
   // If state changed, open new GIF
-  if (motionType != previousState) {
+  if (motionType != previousState || sleepy) {
     gif.close(); // Close previous GIF
-    if (gif.open((uint8_t*)gifData[motionType], gifSize[motionType], GIFDraw)) {
+    if(sleepy){indexGif = 4;}
+    else{indexGif=motionType;}
+    if (gif.open((uint8_t*)gifData[indexGif], gifSize[indexGif], GIFDraw)) {
       gifPlaying = true;
       lastFrameTime = now;
       frameDelay = 0;
@@ -106,6 +127,7 @@ void loop() {
 
   // 3. Non-blocking GIF frame playback
   if (gifPlaying && now - lastFrameTime >= 1/FPS) {
+    //Serial.println("I entered the gif job")
     int result = gif.playFrame(false, &frameDelay);
     lastFrameTime = now;
 
@@ -123,7 +145,7 @@ void loop() {
 
 
 void accelerationJob(void){
-  unsigned long nowa = millis();
+  
   //Acceleration Logic
   ax = acce.readAccX();
   ay = acce.readAccY();
@@ -140,8 +162,8 @@ void accelerationJob(void){
   
   motionType = determineMovementType(a_ave, a_std);
   countSteps(afiltered, motionType);
-  Serial.println("Acceleration job took:");
-  Serial.println(nowa);
+  Serial.println(steps);
+  
 }
 
 

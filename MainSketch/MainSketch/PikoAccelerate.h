@@ -17,10 +17,10 @@
 
 enum MotionState {
   NONE = -1,
-  idling,
-  walking,
-  running,
-  sprinting,
+  idling=0,
+  walking=1,
+  running=2,
+  sprinting=3,
 };
 
 float getMagnitude(int32_t x, int32_t y, int32_t z);
