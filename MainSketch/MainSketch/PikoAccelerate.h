@@ -8,11 +8,11 @@
 
 //Preprocessor DEFINES
 #define EXERCISING_THRESHOLD 500
-#define WALKING_THRESHOLD 1500
-#define RUNNING_THRESHOLD 5000
-#define SPRINTING_THRESHOLD 8000
+#define WALKING_THRESHOLD 1000
+#define RUNNING_THRESHOLD 2000
+#define SPRINTING_THRESHOLD 6000
 #define fc 15
-#define WINDOW 3
+#define WINDOW 2
 #define I2C_ACCE_ADDRESS 0x18
 
 enum MotionState {
@@ -21,6 +21,7 @@ enum MotionState {
   walking=1,
   running=2,
   sprinting=3,
+  sleeping=4,
 };
 
 float getMagnitude(int32_t x, int32_t y, int32_t z);

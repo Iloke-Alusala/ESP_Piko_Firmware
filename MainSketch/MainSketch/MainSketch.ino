@@ -17,7 +17,7 @@
 #define TFT_CS     5
 #define TFT_RST    6
 #define TFT_DC     7
-#define SLEEP_THRESHOLD 30000
+#define SLEEP_THRESHOLD 10000
 
 //Function declarations:
 void GIFDraw(GIFDRAW *pDraw);
@@ -43,15 +43,17 @@ int FPS = 9;
 
 unsigned long sleeptimeCounter = 0;
 unsigned long lastsleepcheckTime = 0;
-bool sleepy = false;
+//bool sleepy = false;
 
 bool gifPlaying = false;
-int indexGif;
-// Data arrays (replace with your actual GIF data headers)
+//int indexGif;
+// Data arrays (replace with your actual GIF names)
 // THESE MUST BE IN THIS ORDER 
 const uint8_t* gifData[] = { idle_v2, walk_v2, jog_v2, sprint_v2, sleep_v2};
 size_t gifSize[] = { sizeof(idle_v2), sizeof(walk_v2), sizeof(jog_v2),sizeof(sprint_v2), sizeof(sleep_v2)};
 //size_t gifSize[] = { sizeof(piko_idle)};
+
+const int MAX_STEPS = 200;
 
 void setup() {
   //Serial set
@@ -100,21 +102,23 @@ void loop() {
     //Serial.println("I entered the acceleration job");
   }
   //Serial.println(millis());
-  if(motionType == idling && motionType == previousState){
+  if(motionType == idling){// && motionType == previousState){
     sleeptimeCounter = sleeptimeCounter+now-lastsleepcheckTime;
-    sleepy = sleeptimeCounter>=SLEEP_THRESHOLD;
+    if(sleeptimeCounter>=SLEEP_THRESHOLD){
+      motionType=sleeping;
+    }
     lastsleepcheckTime = now;
   }
   else{
     sleeptimeCounter=0;
-    sleepy=false;
+    //motionType = sleeping;
   }
   // If state changed, open new GIF
-  if (motionType != previousState || sleepy) {
+  if (motionType != previousState) {
     gif.close(); // Close previous GIF
-    if(sleepy){indexGif = 4;}
-    else{indexGif=motionType;}
-    if (gif.open((uint8_t*)gifData[indexGif], gifSize[indexGif], GIFDraw)) {
+    // if(sleepy){indexGif = 4;}
+    // else{indexGif=motionType;}
+    if (gif.open((uint8_t*)gifData[motionType], gifSize[motionType], GIFDraw)) {
       gifPlaying = true;
       lastFrameTime = now;
       frameDelay = 0;
@@ -135,6 +139,7 @@ void loop() {
       gif.reset();  // Or gifPlaying = false if you don't want to loop
     }
   }
+  drawProgressBar(steps);
 }
 
 
@@ -193,5 +198,39 @@ void GIFDraw(GIFDRAW *pDraw) {
     tft.print(String(steps));
     // tft.drawChar(10, 10, 'P', ST77XX_WHITE, ST77XX_WHITE, 2);
   }            // Your text here
+  //drawProgressBar(steps);
+}
 
+void drawProgressBar(int steps) {
+  static int lastFillWidth = -1; // remember the last fill width
+
+  int barWidth = 160;
+  int barHeight = 18;
+  int thickness = 2;
+  int bottomPadding = 15;
+  int x = (tft.width() - barWidth) / 2;
+  int y = tft.height() - barHeight - bottomPadding;
+
+  uint16_t barColor = tft.color565(216, 217, 217);
+  // inverted default: ST77XX_WHITE 
+  // piko's OG colour: tft.color565(39, 38, 38)
+
+  int fillInset = thickness;
+  int fillWidth = map(steps, 0, MAX_STEPS, 0, barWidth - 2 * fillInset);
+
+  // ✅ Only redraw if the fill width changed
+  //if (fillWidth == lastFillWidth) return;
+
+  lastFillWidth = fillWidth;
+
+  // Draw thicker outline via multiple rectangles
+  for (int i = 0; i < thickness; i++) {
+    tft.drawRect(x - i, y - i, barWidth + 2 * i, barHeight + 2 * i, barColor);
+  }
+
+  // Clear previous fill area
+  tft.fillRect(x + fillInset, y + fillInset, barWidth - 2 * fillInset, barHeight - 2 * fillInset, tft.color565(216, 217, 217));
+
+  // Draw current fill
+  tft.fillRect(x + fillInset, y + fillInset, fillWidth, barHeight - 2 * fillInset, barColor);
 }
