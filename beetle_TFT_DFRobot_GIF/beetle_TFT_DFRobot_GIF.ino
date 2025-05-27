@@ -116,9 +116,12 @@ void loop() {
       yield();  // Keep WiFi/OS tasks alive on ESP32
       
     }
-    
     // draw the progress bar after the full GIF frame is rendered
       drawProgressBar(stepCount);
+    
+    // hard-coded progress bar
+
+    
     gif.close();
     //currentGif = (currentGif + 1) % 5;  // Rotate between GIFs
   } else {
