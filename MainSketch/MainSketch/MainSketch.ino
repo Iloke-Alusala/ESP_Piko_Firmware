@@ -1,27 +1,26 @@
 #include <FiltersFromGit.h>
 #include <DFRobot_LIS.h>
-//#include <DFRobot_LIS2DH12.h>
-//#include <DFRobot_LIS2DW12.h>
 #include "PikoAccelerate.h"
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7789.h>
 #include <AnimatedGIF.h>
 #include "piko_sleep.h"
-#include "piko_idle.h"  // Replace with your actual .h file
+#include "piko_idle.h"  // Replace with your actual .h gif files
 #include "piko_walk.h"
 #include "piko_jog.h"
 #include "piko_sprint.h"
 
-// Define your MACROS
+// Define your MACROS for the LCD
 #define TFT_CS     5
 #define TFT_RST    6
 #define TFT_DC     7
 #define SLEEP_THRESHOLD 10000
 
 //Function declarations:
-void GIFDraw(GIFDRAW *pDraw);
-void accelerationJob(void);
+void GIFDraw(GIFDRAW *pDraw); //Displays the GIF on the LCD
+void accelerationJob(void); //manages all acceleration absed activities
+void drawProgressBar(int steps) ;//manages the loading bar based of steps
 
 //Object initilisations
 DFRobot_LIS331HH_I2C acce(&Wire, I2C_ACCE_ADDRESS); //creates an accelerometer object that communicates via I2C
@@ -34,26 +33,24 @@ AnimatedGIF gif;
 char* overlayText = "0";
 
 unsigned long lastSampleTime = 0;
-unsigned long sampleRate = 20;
-MotionState previousState = NONE;
+unsigned long sampleRate = 20; //ensures samples every ~20ms
+MotionState previousState = NONE; //ensures that the first GIF will run
 
 unsigned long lastFrameTime = 0;
-int frameDelay = 0;
-int FPS = 9;
+int frameDelay = 0; //DO NOT CHANGE unknowingly. Ensures playfram function that draws GIF is non-blocking
+int FPS = 9; //Desired frame rate
 
 unsigned long sleeptimeCounter = 0;
 unsigned long lastsleepcheckTime = 0;
-//bool sleepy = false;
 
 bool gifPlaying = false;
-//int indexGif;
+
 // Data arrays (replace with your actual GIF names)
-// THESE MUST BE IN THIS ORDER 
+// THESE MUST BE IN THIS ORDER, since indexed by motionType 
 const uint8_t* gifData[] = { idle_v2, walk_v2, jog_v2, sprint_v2, sleep_v2};
 size_t gifSize[] = { sizeof(idle_v2), sizeof(walk_v2), sizeof(jog_v2),sizeof(sprint_v2), sizeof(sleep_v2)};
-//size_t gifSize[] = { sizeof(piko_idle)};
 
-const int MAX_STEPS = 200;
+const int MAX_STEPS = 200; //Number of steps to fill the progress bar
 
 void setup() {
   //Serial set
@@ -80,11 +77,7 @@ void setup() {
   tft.setTextColor(ST77XX_WHITE);       // Choose your text color
   tft.setTextSize(2);                   // Adjust as needed
   tft.setCursor(10, 10);                // X, Y position
-  // Added some important stuff here
-
-
   tft.invertDisplay(false);
-
 
   // Initialize GIF decoder
   gif.begin();  // No endian flag needed for Adafruit library
@@ -94,16 +87,13 @@ void loop() {
 
   unsigned long now = millis();
 
-  // 1. Update state every 20ms
-  //Serial.println(now);
-  //int mostrecentSteps = steps;
+  //Update state every 20ms
   if (now - lastSampleTime >= sampleRate) {
     lastSampleTime = now;
     accelerationJob();
-    //Serial.println("I entered the acceleration job");
   }
-  //Serial.println(millis());
-  if(motionType == idling){// && motionType == previousState){
+  //Handles if it needs to go into a sleep state.
+  if(motionType == idling){
     sleeptimeCounter = sleeptimeCounter+now-lastsleepcheckTime;
     if(sleeptimeCounter>=SLEEP_THRESHOLD){
       motionType=sleeping;
@@ -113,13 +103,10 @@ void loop() {
   else{
     sleeptimeCounter=0;
     lastsleepcheckTime = now;
-    //motionType = sleeping;
   }
   // If state changed, open new GIF
   if (motionType != previousState) {
     gif.close(); // Close previous GIF
-    // if(sleepy){indexGif = 4;}
-    // else{indexGif=motionType;}
     if (gif.open((uint8_t*)gifData[motionType], gifSize[motionType], GIFDraw)) {
       gifPlaying = true;
       lastFrameTime = now;
@@ -133,7 +120,6 @@ void loop() {
 
   // 3. Non-blocking GIF frame playback
   if (gifPlaying && now - lastFrameTime >= 1/FPS) {
-    //Serial.println("I entered the gif job")
     int result = gif.playFrame(false, &frameDelay);
     lastFrameTime = now;
     drawProgressBar(steps);
@@ -141,7 +127,6 @@ void loop() {
       gif.reset();  // Or gifPlaying = false if you don't want to loop
     }
   }
-  //if(mostrecentSteps!=steps){drawProgressBar(steps);}
 }
 
 
@@ -153,29 +138,29 @@ void loop() {
 
 void accelerationJob(void){
   
-  //Acceleration Logic
+  //Acceleration Raw Data
   ax = acce.readAccX();
   ay = acce.readAccY();
   az = acce.readAccZ();
 
   a = getMagnitude(ax,ay,az)-1000;
 
+  //Filters through Lowpass to remove noise
   myAccelerationFilter.input(a);
   afiltered = myAccelerationFilter.output();
 
+  //Get running statistics
   myAccelerationStats.input(afiltered);
   a_ave = myAccelerationStats.mean();
   a_std = myAccelerationStats.sigma();
   
+  //Acceleration Logic
   motionType = determineMovementType(a_ave, a_std);
   countSteps(afiltered, motionType);
-  Serial.println(steps);
-  
 }
 
-
 void GIFDraw(GIFDRAW *pDraw) {
-  if (pDraw->y >= tft.height()-37) return;
+  if (pDraw->y >= tft.height()-37) return; //-37 ensures gif doesn't overdraw on the loading bar
 
   static uint16_t lineBuffer[320];  // Enough for full width
 
@@ -198,14 +183,12 @@ void GIFDraw(GIFDRAW *pDraw) {
     tft.setTextSize(2);
     tft.setCursor(10, 10);
     tft.print(String(steps));
-    // tft.drawChar(10, 10, 'P', ST77XX_WHITE, ST77XX_WHITE, 2);
-  }            // Your text here
+  }
 }
 
 void drawProgressBar(int steps) {
   Serial.println("I am in draw bar fn");
-  static int lastFillWidth = -1; // remember the last fill width
-  //static bool firstDraw = true;
+  static int lastFillWidth = -1; // remember the last fill width (ensure static)
 
   int barWidth = 160;
   int barHeight = 18;
@@ -215,17 +198,14 @@ void drawProgressBar(int steps) {
   int y = tft.height() - barHeight - bottomPadding;
 
   uint16_t barColor = tft.color565(216, 217, 217);
-  // inverted default: ST77XX_WHITE 
-  // piko's OG colour: tft.color565(39, 38, 38)
 
   int clampedsteps = constrain(steps,0,MAX_STEPS);
   int fillInset = thickness;
   int fillWidth = map(clampedsteps, 0, MAX_STEPS, 0, barWidth - 2 * fillInset);
 
-  // ✅ Only redraw if the fill width changed
+  // Only redraw if the fill width changed -better speed
   if (fillWidth == lastFillWidth) return;
   lastFillWidth = fillWidth;
-  Serial.println("I am gonna draw a rectangle");
 
   // Draw thicker outline via multiple rectangles
   for (int i = 0; i < thickness; i++) {

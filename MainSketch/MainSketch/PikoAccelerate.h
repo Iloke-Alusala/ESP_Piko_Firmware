@@ -2,15 +2,12 @@
 #define PikoAccelerate_h
 #include <stdint.h>
 #include <math.h>
-// #include <DFRobot_LIS.h> //used to communicate with the accelerometer
-// #include <FiltersFromGit.h> //used for preprocessing of acceleration values
-// #include <Wire.h> //used to facilitate I2C communication
 
 //Preprocessor DEFINES
-#define EXERCISING_THRESHOLD 500
-#define WALKING_THRESHOLD 1000
-#define RUNNING_THRESHOLD 2000
-#define SPRINTING_THRESHOLD 6000
+#define EXERCISING_THRESHOLD 5
+#define WALKING_THRESHOLD 50
+#define RUNNING_THRESHOLD 100
+#define SPRINTING_THRESHOLD 700
 #define fc 15
 #define WINDOW 2
 #define I2C_ACCE_ADDRESS 0x18

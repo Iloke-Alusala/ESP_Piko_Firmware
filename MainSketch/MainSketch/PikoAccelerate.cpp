@@ -45,11 +45,11 @@ void countSteps(float a, MotionState movementType){
 }
 
 void takeStep(float a, int threshold){
-  if (a>threshold+200 && !stepping){
+  if (a>threshold+20 && !stepping){
       steps = steps+1;
       stepping = true;
     }
-    if (a<threshold+500){
+    if (a<threshold+20){
       stepping = false;
     }
     return;
