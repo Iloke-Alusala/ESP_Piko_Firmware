@@ -108,7 +108,10 @@ void setup() {
 }
 
 // scroll through different piko gifs
-int currentGif = 3;
+int currentGif = 2;
+
+unsigned long fullBarTime = 0;
+bool barWasFull = false;
 
 void loop() {
   const uint8_t* gifs[] = { idle_v2, walk_v2, jog_v2, sprint_v2, sleep_v2 };
@@ -117,78 +120,58 @@ void loop() {
   // size_t sizes[] = { sizeof(idle_480), sizeof(walk_480), sizeof(jog_480), sizeof(sprint_480), sizeof(sleep_480) };
 
   if (gif.open((uint8_t *)gifs[currentGif], sizes[currentGif], GIFDraw)) {
-      Serial.printf("GIF opened: %d x %d\n", gif.getCanvasWidth(), gif.getCanvasHeight());
+    Serial.printf("GIF opened: %d x %d\n", gif.getCanvasWidth(), gif.getCanvasHeight());
 
-      int frameCount = 2;
+    int frameCount = 0;
 
-      while (gif.playFrame(true, NULL)) {
-        yield();
-        frameCount++;
+    while (gif.playFrame(true, NULL)) {
+      yield();  // Keep WiFi/OS tasks alive on ESP32
 
-        // Progress bar behaviour per state
-        switch (currentGif) {
-          case 0: // idle
-            // do nothing, bar remains constant
-            stepCount = 40;
-            break;
+      // === Hardcoded stepCount update logic ===
+      switch (currentGif) {
+        case 0: // idle: don't increment
+          break;
 
-          case 1: // walk
-            if (frameCount % 5 == 0) stepCount++;  // slower increment
-            break;
+        case 1: // walk: slow increase
+          if (frameCount % 5 == 0 && stepCount < MAX_STEPS) stepCount++;
+          break;
 
-          case 2: // jog
-            if (frameCount % 2 == 0) stepCount++;  // moderate increment
-            break;
+        case 2: // jog: medium increase
+          if (frameCount % 2 == 0 && stepCount < MAX_STEPS) stepCount++;
+          break;
 
-          case 3: // sprint
-            stepCount++;  // fastest increment
-            break;
+        case 3: // sprint: fast increase
+          if (stepCount < MAX_STEPS) stepCount++;
+          break;
 
-          case 4: // sleep
-            if (frameCount % 4 == 0 && stepCount > 0) stepCount--;  // slow decrement
-            break;
-        }
-
-        // Clamp stepCount between 0 and MAX_STEPS
-        stepCount = constrain(stepCount, 0, MAX_STEPS);
-
-        drawProgressBar(stepCount);
+        case 4: // sleep: decrease
+          if (frameCount % 4 == 0 && stepCount > 0) stepCount--;
+          break;
       }
 
-      gif.close();
+      // === Reset logic: 5s after full bar ===
+      if (stepCount >= MAX_STEPS) {
+        if (!barWasFull) {
+          barWasFull = true;
+          fullBarTime = millis();
+        } else if (millis() - fullBarTime >= 5000) {
+          stepCount = 0;
+          barWasFull = false;
+        }
+      } else {
+        barWasFull = false;
+      }
+
+      frameCount++;
+    }
+
+    drawProgressBar(stepCount);
+    gif.close();
 
       // For demo purposes, cycle manually using button or just uncomment:
       // currentGif = (currentGif + 1) % 5;  
     } else {
       Serial.println("Failed to open GIF");
     }
-
-  //   if (gif.open((uint8_t *)gifs[currentGif], sizes[currentGif], GIFDraw)) {
-  //   Serial.printf("GIF opened: %d x %d\n", gif.getCanvasWidth(), gif.getCanvasHeight());
-  //   // simulate step updates
-  //     stepCount = (stepCount + 1) % (MAX_STEPS + 1);
-      
-  //   while (gif.playFrame(true, NULL)) {
-  //     yield();  // Keep WiFi/OS tasks alive on ESP32
-      
-  //   }
-  //   // draw the progress bar after the full GIF frame is rendered
-  //     drawProgressBar(stepCount);
-    
-  //   // hard-coded progress bar:
-  //   // idle -> progress bar stops updating
-  //   // walk -> progress bar updates slowly
-  //   // jog -> progress bar updates quicker
-  //   // sprint -> progress bar updates fastest
-  //   // sleep -> progress bar decreases
-
-
-  //   gif.close();
-  //   //currentGif = (currentGif + 1) % 5;  // Rotate between GIFs
-  // } else {
-  //   Serial.println("Failed to open GIF");
-  // }
-
-  
 }
 
