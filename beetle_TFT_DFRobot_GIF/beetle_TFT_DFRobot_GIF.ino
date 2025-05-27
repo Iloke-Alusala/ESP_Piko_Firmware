@@ -4,6 +4,7 @@
 #include <AnimatedGIF.h>
 #include "piko_idle_v0.h"  // Replace with your actual .h file
 
+
 // actual piko gifs
 #include "piko_idle.h"
 #include "piko_walk.h"
@@ -60,6 +61,7 @@ void drawProgressBar(int steps) {
   int y = tft.height() - barHeight - bottomPadding;
 
   uint16_t barColor = tft.color565(216, 217, 217);
+  // piko's og colour inverted: tft.color565(216, 217, 217)
   // inverted default: ST77XX_WHITE 
   // piko's OG colour: tft.color565(39, 38, 38)
 
@@ -77,7 +79,7 @@ void drawProgressBar(int steps) {
   }
 
   // Clear previous fill area
-  tft.fillRect(x + fillInset, y + fillInset, barWidth - 2 * fillInset, barHeight - 2 * fillInset, tft.color565(216, 217, 217));
+  tft.fillRect(x + fillInset, y + fillInset, barWidth - 2 * fillInset, barHeight - 2 * fillInset, ST77XX_BLACK);
 
   // Draw current fill
   tft.fillRect(x + fillInset, y + fillInset, fillWidth, barHeight - 2 * fillInset, barColor);
@@ -102,8 +104,8 @@ void setup() {
 int currentGif = 1;
 
 void loop() {
-  const uint8_t* gifs[] = { piko_idle, idle_v2, walk_v2, jog_v2, sprint_v2, sleep_v2 };
-  size_t sizes[] = { sizeof(piko_idle), sizeof(idle_v2), sizeof(walk_v2), sizeof(jog_v2), sizeof(sprint_v2), sizeof(sleep_v2) };
+  const uint8_t* gifs[] = { idle_v2, walk_v2, jog_v2, sprint_v2, sleep_v2 };
+  size_t sizes[] = { sizeof(idle_v2), sizeof(walk_v2), sizeof(jog_v2), sizeof(sprint_v2), sizeof(sleep_v2) };
 
   if (gif.open((uint8_t *)gifs[currentGif], sizes[currentGif], GIFDraw)) {
     Serial.printf("GIF opened: %d x %d\n", gif.getCanvasWidth(), gif.getCanvasHeight());
@@ -112,11 +114,11 @@ void loop() {
       
     while (gif.playFrame(true, NULL)) {
       yield();  // Keep WiFi/OS tasks alive on ESP32
+      
     }
-
+    
     // draw the progress bar after the full GIF frame is rendered
       drawProgressBar(stepCount);
-
     gif.close();
     //currentGif = (currentGif + 1) % 5;  // Rotate between GIFs
   } else {
