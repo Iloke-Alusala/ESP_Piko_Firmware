@@ -96,6 +96,7 @@ void loop() {
 
   // 1. Update state every 20ms
   //Serial.println(now);
+  //int mostrecentSteps = steps;
   if (now - lastSampleTime >= sampleRate) {
     lastSampleTime = now;
     accelerationJob();
@@ -111,6 +112,7 @@ void loop() {
   }
   else{
     sleeptimeCounter=0;
+    lastsleepcheckTime = now;
     //motionType = sleeping;
   }
   // If state changed, open new GIF
@@ -134,12 +136,12 @@ void loop() {
     //Serial.println("I entered the gif job")
     int result = gif.playFrame(false, &frameDelay);
     lastFrameTime = now;
-
+    drawProgressBar(steps);
     if (result == 0) {
       gif.reset();  // Or gifPlaying = false if you don't want to loop
     }
   }
-  drawProgressBar(steps);
+  //if(mostrecentSteps!=steps){drawProgressBar(steps);}
 }
 
 
@@ -173,7 +175,7 @@ void accelerationJob(void){
 
 
 void GIFDraw(GIFDRAW *pDraw) {
-  if (pDraw->y >= tft.height()) return;
+  if (pDraw->y >= tft.height()-37) return;
 
   static uint16_t lineBuffer[320];  // Enough for full width
 
@@ -198,11 +200,12 @@ void GIFDraw(GIFDRAW *pDraw) {
     tft.print(String(steps));
     // tft.drawChar(10, 10, 'P', ST77XX_WHITE, ST77XX_WHITE, 2);
   }            // Your text here
-  //drawProgressBar(steps);
 }
 
 void drawProgressBar(int steps) {
+  Serial.println("I am in draw bar fn");
   static int lastFillWidth = -1; // remember the last fill width
+  //static bool firstDraw = true;
 
   int barWidth = 160;
   int barHeight = 18;
@@ -215,13 +218,14 @@ void drawProgressBar(int steps) {
   // inverted default: ST77XX_WHITE 
   // piko's OG colour: tft.color565(39, 38, 38)
 
+  int clampedsteps = constrain(steps,0,MAX_STEPS);
   int fillInset = thickness;
-  int fillWidth = map(steps, 0, MAX_STEPS, 0, barWidth - 2 * fillInset);
+  int fillWidth = map(clampedsteps, 0, MAX_STEPS, 0, barWidth - 2 * fillInset);
 
   // ✅ Only redraw if the fill width changed
-  //if (fillWidth == lastFillWidth) return;
-
+  if (fillWidth == lastFillWidth) return;
   lastFillWidth = fillWidth;
+  Serial.println("I am gonna draw a rectangle");
 
   // Draw thicker outline via multiple rectangles
   for (int i = 0; i < thickness; i++) {
@@ -229,7 +233,7 @@ void drawProgressBar(int steps) {
   }
 
   // Clear previous fill area
-  tft.fillRect(x + fillInset, y + fillInset, barWidth - 2 * fillInset, barHeight - 2 * fillInset, tft.color565(216, 217, 217));
+  tft.fillRect(x + fillInset, y + fillInset, barWidth - 2 * fillInset, barHeight - 2 * fillInset, ST77XX_BLACK);
 
   // Draw current fill
   tft.fillRect(x + fillInset, y + fillInset, fillWidth, barHeight - 2 * fillInset, barColor);
