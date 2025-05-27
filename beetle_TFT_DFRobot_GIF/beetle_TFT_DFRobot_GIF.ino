@@ -107,8 +107,10 @@ void setup() {
   tft.invertDisplay(false);
 }
 
+
 // scroll through different piko gifs
 int currentGif = 2;
+
 
 unsigned long fullBarTime = 0;
 bool barWasFull = false;
@@ -130,7 +132,9 @@ void loop() {
       // === Hardcoded stepCount update logic ===
       switch (currentGif) {
         case 0: // idle: don't increment
+          stepCount = 40;
           break;
+          // this is a test a tehdkj so i' probably typing all sorts of stuff that does
 
         case 1: // walk: slow increase
           if (frameCount % 5 == 0 && stepCount < MAX_STEPS) stepCount++;
