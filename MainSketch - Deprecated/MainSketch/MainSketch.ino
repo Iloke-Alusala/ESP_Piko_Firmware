@@ -1,10 +1,12 @@
 #include <FiltersFromGit.h>
 #include <DFRobot_LIS.h>
 #include "PikoAccelerate.h"
+
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7789.h>
 #include <AnimatedGIF.h>
+
 #include "piko_sleep.h"
 #include "piko_idle.h"  // Replace with your actual .h gif files
 #include "piko_walk.h"
@@ -187,7 +189,7 @@ void GIFDraw(GIFDRAW *pDraw) {
 }
 
 void drawProgressBar(int steps) {
-  Serial.println("I am in draw bar fn");
+  //Serial.println("I am in draw bar fn");
   static int lastFillWidth = -1; // remember the last fill width (ensure static)
 
   int barWidth = 160;
