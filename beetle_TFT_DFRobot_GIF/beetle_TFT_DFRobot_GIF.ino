@@ -6,17 +6,14 @@
 
 
 // actual piko gifs
-// #include "idle_480.h"
-// #include "walk_480.h"
-// #include "jog_480.h"
-// #include "sprint_480.h"
-// #include "sleep_480.h"
-
 #include "piko_idle.h"
 #include "piko_walk.h"
 #include "piko_jog.h"
 #include "piko_sprint.h"
 #include "piko_sleep.h"
+
+// gif for thumbnail
+#include "piko_main.h"
 
 // Define your TFT control pins
 #define TFT_CS     5
@@ -109,17 +106,15 @@ void setup() {
 
 
 // scroll through different piko gifs
-int currentGif = 2;
+int currentGif = 1;
 
 
 unsigned long fullBarTime = 0;
 bool barWasFull = false;
 
 void loop() {
-  const uint8_t* gifs[] = { idle_v2, walk_v2, jog_v2, sprint_v2, sleep_v2 };
-  size_t sizes[] = { sizeof(idle_v2), sizeof(walk_v2), sizeof(jog_v2), sizeof(sprint_v2), sizeof(sleep_v2) };
-  // const uint8_t* gifs[] = { idle_480, walk_480, jog_480, sprint_480, sleep_480 };
-  // size_t sizes[] = { sizeof(idle_480), sizeof(walk_480), sizeof(jog_480), sizeof(sprint_480), sizeof(sleep_480) };
+  const uint8_t* gifs[] = { idle_v2, walk_v2, jog_v2, sprint_v2, sleep_v2, piko_main };
+  size_t sizes[] = { sizeof(idle_v2), sizeof(walk_v2), sizeof(jog_v2), sizeof(sprint_v2), sizeof(sleep_v2), sizeof(piko_main) };
 
   if (gif.open((uint8_t *)gifs[currentGif], sizes[currentGif], GIFDraw)) {
     Serial.printf("GIF opened: %d x %d\n", gif.getCanvasWidth(), gif.getCanvasHeight());
